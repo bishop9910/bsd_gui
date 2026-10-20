@@ -1,0 +1,3 @@
+[submodule "bsd"]
+	path = bsd
+	url = https://github.com/bishop9910/bsd.git
