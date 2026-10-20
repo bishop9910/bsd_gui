@@ -1,0 +1,661 @@
+<path>D:\codes\tauri\bsd_gui\src\styles\global.css</path>
+<type>file</type>
+<content>
+1: /* ============================================================
+2:    BSD 下载器 · 全局设计令牌与基础样式
+3:    深色影院风格：深蓝黑底 + 蓝色数据层 + 翠绿行动色
+4:    ============================================================ */
+5: 
+6: :root {
+7:   --bg: #080d17;
+8:   --bg-soft: #0b1220;
+9:   --panel: #0f1828;
+10:   --card: #111b2e;
+11:   --card-2: #0d1626;
+12:   --card-hover: #142036;
+13:   --line: rgba(148, 163, 184, 0.13);
+14:   --line-strong: rgba(148, 163, 184, 0.24);
+15:   --text: #e9effa;
+16:   --text-2: #aab8cd;
+17:   --text-3: #6f7f97;
+18:   --accent: #5b8cff;
+19:   --accent-2: #7ba6ff;
+20:   --accent-soft: rgba(91, 140, 255, 0.14);
+21:   --success: #34d399;
+22:   --success-soft: rgba(52, 211, 153, 0.14);
+23:   --warning: #fbbf24;
+24:   --warning-soft: rgba(251, 191, 36, 0.14);
+25:   --danger: #f87171;
+26:   --danger-soft: rgba(248, 113, 113, 0.13);
+27:   --radius: 16px;
+28:   --radius-md: 12px;
+29:   --radius-sm: 9px;
+30:   --shadow-card: 0 22px 46px -30px rgba(2, 6, 23, 0.95);
+31:   --font: "Inter", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, -apple-system,
+32:     "Helvetica Neue", Arial, sans-serif;
+33:   --mono: "Cascadia Code", "JetBrains Mono", "Consolas", "SFMono-Regular", ui-monospace, monospace;
+34: }
+35: 
+36: * {
+37:   box-sizing: border-box;
+38: }
+39: 
+40: html,
+41: body,
+42: #app {
+43:   height: 100%;
+44: }
+45: 
+46: body {
+47:   margin: 0;
+48:   background: var(--bg);
+49:   color: var(--text);
+50:   font-family: var(--font);
+51:   font-size: 14px;
+52:   line-height: 1.55;
+53:   -webkit-font-smoothing: antialiased;
+54:   text-rendering: optimizeLegibility;
+55:   overflow: hidden;
+56: }
+57: 
+58: h1,
+59: h2,
+60: h3,
+61: h4,
+62: p {
+63:   margin: 0;
+64: }
+65: 
+66: button,
+67: input,
+68: textarea,
+69: select {
+70:   font-family: inherit;
+71: }
+72: 
+73: ::selection {
+74:   background: rgba(91, 140, 255, 0.35);
+75: }
+76: 
+77: ::-webkit-scrollbar {
+78:   width: 10px;
+79:   height: 10px;
+80: }
+81: ::-webkit-scrollbar-track {
+82:   background: transparent;
+83: }
+84: ::-webkit-scrollbar-thumb {
+85:   background: rgba(148, 163, 184, 0.18);
+86:   border: 3px solid transparent;
+87:   border-radius: 999px;
+88:   background-clip: padding-box;
+89: }
+90: ::-webkit-scrollbar-thumb:hover {
+91:   background: rgba(148, 163, 184, 0.32);
+92:   border: 3px solid transparent;
+93:   background-clip: padding-box;
+94: }
+95: 
+96: /* ---------------- 布局外壳 ---------------- */
+97: 
+98: .shell {
+99:   position: relative;
+100:   display: flex;
+101:   height: 100vh;
+102:   overflow: hidden;
+103: }
+104: 
+105: .shell::before {
+106:   content: "";
+107:   position: fixed;
+108:   inset: 0;
+109:   pointer-events: none;
+110:   background:
+111:     radial-gradient(880px 480px at 88% -8%, rgba(91, 140, 255, 0.13), transparent 62%),
+112:     radial-gradient(660px 420px at 6% 108%, rgba(52, 211, 153, 0.07), transparent 60%);
+113:   z-index: 0;
+114: }
+115: 
+116: .sidebar {
+117:   position: relative;
+118:   z-index: 2;
+119:   display: flex;
+120:   flex: 0 0 236px;
+121:   flex-direction: column;
+122:   width: 236px;
+123:   padding: 20px 14px 16px;
+124:   border-right: 1px solid var(--line);
+125:   background: linear-gradient(180deg, rgba(13, 20, 33, 0.92), rgba(8, 13, 23, 0.94));
+126:   backdrop-filter: blur(14px);
+127: }
+128: 
+129: .brand {
+130:   display: flex;
+131:   align-items: center;
+132:   gap: 11px;
+133:   padding: 4px 8px 20px;
+134: }
+135: 
+136: .brand-mark {
+137:   display: grid;
+138:   flex: 0 0 38px;
+139:   place-items: center;
+140:   width: 38px;
+141:   height: 38px;
+142:   border-radius: 12px;
+143:   color: #04140d;
+144:   background: linear-gradient(140deg, #6ee7a8, #22c55e 55%, #15a34a);
+145:   box-shadow: 0 10px 26px -12px rgba(34, 197, 94, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+146: }
+147: 
+148: .brand-text {
+149:   min-width: 0;
+150: }
+151: .brand-title {
+152:   font-size: 15px;
+153:   font-weight: 650;
+154:   letter-spacing: 0.01em;
+155: }
+156: .brand-sub {
+157:   font-size: 11.5px;
+158:   color: var(--text-3);
+159:   letter-spacing: 0.06em;
+160: }
+161: 
+162: .nav {
+163:   display: flex;
+164:   flex-direction: column;
+165:   gap: 3px;
+166:   margin-top: 4px;
+167: }
+168: 
+169: .nav-item {
+170:   position: relative;
+171:   display: flex;
+172:   align-items: center;
+173:   gap: 10px;
+174:   padding: 9px 11px;
+175:   border-radius: var(--radius-sm);
+176:   color: var(--text-2);
+177:   font-size: 13.5px;
+178:   font-weight: 500;
+179:   text-decoration: none;
+180:   transition: background 0.16s ease, color 0.16s ease;
+181: }
+182: 
+183: .nav-item:hover {
+184:   background: rgba(148, 163, 184, 0.07);
+185:   color: var(--text);
+186: }
+187: 
+188: .nav-item.active {
+189:   background: linear-gradient(90deg, rgba(91, 140, 255, 0.2), rgba(91, 140, 255, 0.05));
+190:   color: #dbe8ff;
+191: }
+192: 
+193: .nav-item.active::before {
+194:   content: "";
+195:   position: absolute;
+196:   top: 7px;
+197:   bottom: 7px;
+198:   left: -14px;
+199:   width: 3px;
+200:   border-radius: 0 3px 3px 0;
+201:   background: var(--accent);
+202:   box-shadow: 0 0 14px rgba(91, 140, 255, 0.7);
+203: }
+204: 
+205: .nav-item .nav-badge {
+206:   margin-left: auto;
+207:   min-width: 20px;
+208:   padding: 1px 6px;
+209:   border-radius: 999px;
+210:   background: var(--accent-soft);
+211:   color: var(--accent-2);
+212:   font-size: 11px;
+213:   font-weight: 600;
+214:   text-align: center;
+215:   font-variant-numeric: tabular-nums;
+216: }
+217: 
+218: .sidebar-spacer {
+219:   flex: 1;
+220: }
+221: 
+222: .core-panel {
+223:   display: flex;
+224:   align-items: center;
+225:   gap: 9px;
+226:   margin-top: 12px;
+227:   padding: 10px 11px;
+228:   border: 1px solid var(--line);
+229:   border-radius: var(--radius-md);
+230:   background: rgba(148, 163, 184, 0.04);
+231: }
+232: 
+233: .core-dot {
+234:   position: relative;
+235:   flex: 0 0 8px;
+236:   width: 8px;
+237:   height: 8px;
+238:   border-radius: 50%;
+239:   background: var(--text-3);
+240: }
+241: .core-dot.ok {
+242:   background: var(--success);
+243:   box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+244: }
+245: .core-dot.bad {
+246:   background: var(--danger);
+247:   box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.16);
+248: }
+249: .core-dot.pending {
+250:   background: var(--warning);
+251:   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.16);
+252: }
+253: 
+254: .core-title {
+255:   font-size: 12.5px;
+256:   font-weight: 550;
+257:   color: var(--text-2);
+258:   line-height: 1.35;
+259: }
+260: .core-sub {
+261:   font-size: 11px;
+262:   color: var(--text-3);
+263:   line-height: 1.35;
+264:   font-family: var(--mono);
+265: }
+266: 
+267: .content {
+268:   position: relative;
+269:   z-index: 1;
+270:   flex: 1;
+271:   min-width: 0;
+272:   padding: 26px 34px 44px;
+273:   overflow-y: auto;
+274: }
+275: 
+276: .view {
+277:   display: flex;
+278:   flex-direction: column;
+279:   gap: 18px;
+280:   max-width: 1060px;
+281:   margin: 0 auto;
+282: }
+283: 
+284: /* ---------------- 页头 ---------------- */
+285: 
+286: .page-head {
+287:   display: flex;
+288:   align-items: flex-end;
+289:   justify-content: space-between;
+290:   gap: 16px;
+291:   margin-bottom: 2px;
+292: }
+293: 
+294: .page-title {
+295:   display: flex;
+296:   align-items: center;
+297:   gap: 10px;
+298:   font-size: 21px;
+299:   font-weight: 650;
+300:   letter-spacing: -0.01em;
+301: }
+302: 
+303: .page-sub {
+304:   margin-top: 3px;
+305:   color: var(--text-3);
+306:   font-size: 12.5px;
+307: }
+308: 
+309: /* ---------------- 通用卡片 / 文字 ---------------- */
+310: 
+311: .card {
+312:   border: 1px solid var(--line);
+313:   border-radius: var(--radius);
+314:   background: linear-gradient(180deg, var(--card), var(--card-2));
+315:   box-shadow: var(--shadow-card);
+316: }
+317: 
+318: .card-pad {
+319:   padding: 20px 22px;
+320: }
+321: 
+322: .row {
+323:   display: flex;
+324:   align-items: center;
+325:   gap: 10px;
+326: }
+327: 
+328: .grow {
+329:   flex: 1;
+330:   min-width: 0;
+331: }
+332: 
+333: .muted {
+334:   color: var(--text-3);
+335: }
+336: 
+337: .mono {
+338:   font-family: var(--mono);
+339:   font-size: 12px;
+340: }
+341: 
+342: .text-2 {
+343:   color: var(--text-2);
+344: }
+345: 
+346: .hint {
+347:   color: var(--text-3);
+348:   font-size: 12px;
+349: }
+350: 
+351: .divider {
+352:   height: 1px;
+353:   background: var(--line);
+354: }
+355: 
+356: /* ---------------- 按钮 ---------------- */
+357: 
+358: .btn {
+359:   display: inline-flex;
+360:   align-items: center;
+361:   justify-content: center;
+362:   gap: 7px;
+363:   height: 38px;
+364:   padding: 0 16px;
+365:   border: 1px solid var(--line-strong);
+366:   border-radius: var(--radius-sm);
+367:   background: rgba(148, 163, 184, 0.06);
+368:   color: var(--text-2);
+369:   font-size: 13px;
+370:   font-weight: 550;
+371:   cursor: pointer;
+372:   transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+373: }
+374: .btn:hover:not(:disabled) {
+375:   background: rgba(148, 163, 184, 0.12);
+376:   color: var(--text);
+377:   border-color: var(--line-strong);
+378: }
+379: .btn:disabled {
+380:   cursor: not-allowed;
+381:   opacity: 0.5;
+382: }
+383: 
+384: .btn-primary {
+385:   border: none;
+386:   height: 40px;
+387:   padding: 0 20px;
+388:   border-radius: var(--radius-sm);
+389:   background: linear-gradient(135deg, #4ade80, #22c55e 55%, #16a34a);
+390:   box-shadow: 0 12px 26px -14px rgba(34, 197, 94, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+391:   color: #04140d;
+392:   font-size: 13.5px;
+393:   font-weight: 650;
+394:   letter-spacing: 0.01em;
+395:   cursor: pointer;
+396:   display: inline-flex;
+397:   align-items: center;
+398:   gap: 7px;
+399:   transition: filter 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+400: }
+401: .btn-primary:hover:not(:disabled) {
+402:   filter: brightness(1.06);
+403:   transform: translateY(-1px);
+404:   box-shadow: 0 16px 32px -14px rgba(34, 197, 94, 1), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+405: }
+406: .btn-primary:active:not(:disabled) {
+407:   transform: translateY(0);
+408: }
+409: .btn-primary:disabled {
+410:   cursor: not-allowed;
+411:   opacity: 0.55;
+412:   transform: none;
+413: }
+414: 
+415: .icon-btn {
+416:   display: inline-grid;
+417:   place-items: center;
+418:   width: 32px;
+419:   height: 32px;
+420:   padding: 0;
+421:   border: 1px solid transparent;
+422:   border-radius: var(--radius-sm);
+423:   background: transparent;
+424:   color: var(--text-3);
+425:   cursor: pointer;
+426:   transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+427: }
+428: .icon-btn:hover {
+429:   background: rgba(148, 163, 184, 0.1);
+430:   color: var(--text);
+431:   border-color: var(--line);
+432: }
+433: .icon-btn.danger:hover {
+434:   background: var(--danger-soft);
+435:   color: var(--danger);
+436: }
+437: 
+438: .field-label {
+439:   display: block;
+440:   margin-bottom: 6px;
+441:   color: var(--text-3);
+442:   font-size: 11.5px;
+443:   font-weight: 550;
+444:   letter-spacing: 0.02em;
+445: }
+446: 
+447: /* ---------------- 状态点 ---------------- */
+448: 
+449: .chip {
+450:   display: inline-flex;
+451:   align-items: center;
+452:   gap: 6px;
+453:   height: 22px;
+454:   padding: 0 9px;
+455:   border-radius: 999px;
+456:   border: 1px solid transparent;
+457:   font-size: 11.5px;
+458:   font-weight: 600;
+459:   white-space: nowrap;
+460:   letter-spacing: 0.01em;
+461: }
+462: .chip .chip-dot {
+463:   width: 6px;
+464:   height: 6px;
+465:   border-radius: 50%;
+466:   background: currentColor;
+467: }
+468: .chip.running {
+469:   color: #8fb3ff;
+470:   background: rgba(91, 140, 255, 0.12);
+471:   border-color: rgba(91, 140, 255, 0.28);
+472: }
+473: .chip.running .chip-dot {
+474:   animation: chip-pulse 1.4s ease-in-out infinite;
+475: }
+476: .chip.retrying {
+477:   color: var(--warning);
+478:   background: var(--warning-soft);
+479:   border-color: rgba(251, 191, 36, 0.28);
+480: }
+481: .chip.retrying .chip-dot {
+482:   animation: chip-pulse 1s ease-in-out infinite;
+483: }
+484: .chip.success {
+485:   color: var(--success);
+486:   background: var(--success-soft);
+487:   border-color: rgba(52, 211, 153, 0.26);
+488: }
+489: .chip.failed,
+490: .chip.interrupted {
+491:   color: var(--danger);
+492:   background: var(--danger-soft);
+493:   border-color: rgba(248, 113, 113, 0.26);
+494: }
+495: .chip.cancelled {
+496:   color: var(--text-3);
+497:   background: rgba(148, 163, 184, 0.1);
+498:   border-color: var(--line);
+499: }
+500: .chip.queued {
+501:   color: var(--text-2);
+502:   background: rgba(148, 163, 184, 0.1);
+503:   border-color: var(--line);
+504: }
+505: 
+506: @keyframes chip-pulse {
+507:   0%,
+508:   100% {
+509:     opacity: 1;
+510:   }
+511:   50% {
+512:     opacity: 0.25;
+513:   }
+514: }
+515: 
+516: /* ---------------- 空状态 ---------------- */
+517: 
+518: .empty {
+519:   display: flex;
+520:   flex-direction: column;
+521:   align-items: center;
+522:   justify-content: center;
+523:   gap: 10px;
+524:   padding: 56px 24px;
+525:   color: var(--text-3);
+526:   text-align: center;
+527: }
+528: .empty-icon {
+529:   display: grid;
+530:   place-items: center;
+531:   width: 62px;
+532:   height: 62px;
+533:   border: 1px solid var(--line);
+534:   border-radius: 20px;
+535:   background: rgba(148, 163, 184, 0.05);
+536:   color: var(--text-3);
+537: }
+538: .empty-title {
+539:   color: var(--text-2);
+540:   font-size: 14px;
+541:   font-weight: 550;
+542: }
+543: .empty-sub {
+544:   max-width: 380px;
+545:   font-size: 12.5px;
+546:   line-height: 1.7;
+547: }
+548: 
+549: /* ---------------- 顶部错误横幅 ---------------- */
+550: 
+551: .banner {
+552:   display: flex;
+553:   gap: 12px;
+554:   margin: 0 auto 18px;
+555:   max-width: 1060px;
+556:   padding: 14px 16px;
+557:   border: 1px solid rgba(248, 113, 113, 0.28);
+558:   border-radius: var(--radius-md);
+559:   background: linear-gradient(180deg, rgba(248, 113, 113, 0.12), rgba(248, 113, 113, 0.05));
+560: }
+561: .banner-icon {
+562:   flex: 0 0 auto;
+563:   color: var(--danger);
+564:   margin-top: 1px;
+565: }
+566: .banner-title {
+567:   font-size: 13.5px;
+568:   font-weight: 600;
+569:   color: #ffc9c9;
+570: }
+571: .banner-body {
+572:   margin-top: 3px;
+573:   color: #f0b4b4;
+574:   font-size: 12.5px;
+575:   white-space: pre-wrap;
+576:   word-break: break-word;
+577:   font-family: var(--mono);
+578:   line-height: 1.6;
+579:   max-height: 180px;
+580:   overflow-y: auto;
+581: }
+582: 
+583: /* ---------------- 进度条 ---------------- */
+584: 
+585: .progress-track {
+586:   position: relative;
+587:   height: 6px;
+588:   overflow: hidden;
+589:   border-radius: 999px;
+590:   background: rgba(148, 163, 184, 0.13);
+591: }
+592: 
+593: .progress-fill {
+594:   height: 100%;
+595:   border-radius: 999px;
+596:   background: linear-gradient(90deg, #3b6bf0, #5b8cff 45%, #7ba6ff);
+597:   box-shadow: 0 0 12px rgba(91, 140, 255, 0.5);
+598:   transition: width 0.35s ease;
+599: }
+600: .progress-fill.success {
+601:   background: linear-gradient(90deg, #16a34a, #22c55e 50%, #6ee7a8);
+602:   box-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
+603: }
+604: .progress-fill.failed {
+605:   background: linear-gradient(90deg, #b91c1c, #f87171);
+606:   box-shadow: none;
+607: }
+608: .progress-fill.cancelled {
+609:   background: linear-gradient(90deg, #475569, #64748b);
+610:   box-shadow: none;
+611: }
+612: 
+613: .progress-indeterminate {
+614:   position: absolute;
+615:   inset: 0;
+616:   width: 40%;
+617:   border-radius: 999px;
+618:   background: linear-gradient(90deg, transparent, rgba(91, 140, 255, 0.9), transparent);
+619:   animation: indeterminate 1.4s ease-in-out infinite;
+620: }
+621: 
+622: @keyframes indeterminate {
+623:   0% {
+624:     transform: translateX(-110%);
+625:   }
+626:   100% {
+627:     transform: translateX(360%);
+628:   }
+629: }
+630: 
+631: /* ---------------- 过渡 ---------------- */
+632: 
+633: .fade-enter-active,
+634: .fade-leave-active {
+635:   transition: opacity 0.18s ease, transform 0.18s ease;
+636: }
+637: .fade-enter-from {
+638:   opacity: 0;
+639:   transform: translateY(6px);
+640: }
+641: .fade-leave-to {
+642:   opacity: 0;
+643:   transform: translateY(-4px);
+644: }
+645: 
+646: .task-enter-active {
+647:   transition: opacity 0.22s ease, transform 0.22s ease;
+648: }
+649: .task-enter-from {
+650:   opacity: 0;
+651:   transform: translateY(10px);
+652: }
+653: .task-move {
+654:   transition: transform 0.22s ease;
+655: }
+
+(End of file - total 655 lines)
+</content>
