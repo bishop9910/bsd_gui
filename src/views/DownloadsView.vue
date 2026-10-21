@@ -1,23 +1,35 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { NInput, NInputNumber, NSelect, NSwitch, useDialog, useMessage, useNotification } from "naive-ui";
+import { NInput, NInputNumber, NModal, NSelect, NSwitch, useDialog, useMessage, useNotification } from "naive-ui";
 import AppIcon from "../components/AppIcon.vue";
 import TaskCard from "../components/TaskCard.vue";
 import { bsd } from "../lib/bsd";
+import { cookiePairCount, mergeHeaderLines, normalizeCookie, parseCurlCommand } from "../lib/curl";
 import { clamp, looksLikeUrl } from "../lib/format";
 import { addTask, clearFinished, coreStatus, removeTask, settings, tasks } from "../lib/store";
 import type { DownloadJob, TaskRecord } from "../lib/types";
 
 type FilterKey = "all" | "active" | "success" | "failed";
 
+/** 一个下载条目：url 必填；文件名与校验各自可选（留空即交给核心自动处理）。 */
+interface DraftRow {
+  id: number;
+  url: string;
+  output: string;
+  alg: string;
+  checksum: string;
+}
+
 const message = useMessage();
 const notification = useNotification();
 const dialog = useDialog();
 
-const urlText = ref("");
-const output = ref("");
-const checksumAlg = ref("sha256");
-const checksumValue = ref("");
+let sequence = 1;
+function makeRow(url = ""): DraftRow {
+  return { id: sequence++, url, output: "", alg: "", checksum: "" };
+}
+
+const rows = ref<DraftRow[]>([makeRow()]);
 const advancedOpen = ref(false);
 const busy = ref(false);
 const filter = ref<FilterKey>("all");
@@ -32,28 +44,102 @@ const rateOptions = [
 ];
 
 const algOptions = [
+  { label: "不校验", value: "" },
   { label: "SHA-256", value: "sha256" },
   { label: "SHA-512", value: "sha512" },
   { label: "SHA-1", value: "sha1" },
   { label: "MD5", value: "md5" },
 ];
 
+/** 示例链接放在脚本里：vue-tsc 在 v-for 子树内遇到静态属性里的 `//` 会丢失循环变量作用域。 */
+const urlPlaceholder = "https://example.com/file.zip";
+
 const coreReady = computed(() => coreStatus.value === null || coreStatus.value.loaded);
 
-function parseUrls(): string[] {
-  return urlText.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+// —— curl / Cookie 导入 ——
+type ImportMode = "" | "curl" | "cookie";
+const importMode = ref<ImportMode>("");
+const importText = ref("");
+
+const importOpen = computed({
+  get: () => importMode.value !== "",
+  set: (value: boolean) => {
+    if (!value) {
+      importMode.value = "";
+      importText.value = "";
+    }
+  },
+});
+
+const importTitle = computed(() => (importMode.value === "cookie" ? "导入 Cookie" : "导入 cURL 命令"));
+
+const importHint = computed(() =>
+  importMode.value === "cookie"
+    ? "粘贴浏览器 Cookie 字符串或 document.cookie 结果，会自动去掉重复的键。"
+    : "从浏览器开发者工具里复制「Copy as cURL」，会自动识别链接、Referer、User-Agent 与 Cookie。",
+);
+
+const importSummary = computed(() => {
+  if (importMode.value === "curl") {
+    const parsed = parseCurlCommand(importText.value);
+    const items: string[] = [];
+    if (parsed.url) items.push("下载链接");
+    if (parsed.userAgent) items.push("User-Agent");
+    if (parsed.referer) items.push("Referer");
+    if (parsed.cookie) items.push(`Cookie ${cookiePairCount(parsed.cookie)} 项`);
+    if (parsed.extraHeaders.length > 0) items.push(`其他请求头 ${parsed.extraHeaders.length} 条`);
+    return items;
+  }
+  const cookie = normalizeCookie(importText.value);
+  return cookie ? [`Cookie ${cookiePairCount(cookie)} 项`] : [];
+});
+
+function openImport(mode: "curl" | "cookie"): void {
+  importMode.value = mode;
+  importText.value = "";
 }
 
-function buildJob(url: string, single: boolean): DownloadJob {
-  const digest = checksumValue.value.trim();
+function applyImport(): void {
+  if (importMode.value === "curl") {
+    const parsed = parseCurlCommand(importText.value);
+    const additions: string[] = [];
+    if (parsed.referer) additions.push(`Referer: ${parsed.referer}`);
+    if (parsed.cookie) additions.push(`Cookie: ${parsed.cookie}`);
+    additions.push(...parsed.extraHeaders);
+
+    if (!parsed.url && additions.length === 0 && !parsed.userAgent) {
+      message.warning("没有从命令里识别到链接或请求头，确认复制的是完整的 cURL 命令");
+      return;
+    }
+    if (parsed.url) {
+      const empty = rows.value.find((row) => row.url.trim().length === 0);
+      if (empty) empty.url = parsed.url;
+      else rows.value.push(makeRow(parsed.url));
+    }
+    if (parsed.userAgent) settings.userAgent = parsed.userAgent;
+    if (additions.length > 0) settings.headersText = mergeHeaderLines(settings.headersText, additions);
+    message.success(`已导入：${importSummary.value.join("、")}`);
+    importOpen.value = false;
+    return;
+  }
+
+  const cookie = normalizeCookie(importText.value);
+  if (!cookie) {
+    message.warning("没有识别到有效的 Cookie（需要形如 key=value; key2=value2）");
+    return;
+  }
+  settings.headersText = mergeHeaderLines(settings.headersText, [`Cookie: ${cookie}`]);
+  message.success(`已写入 Cookie ${cookiePairCount(cookie)} 项`);
+  importOpen.value = false;
+}
+
+function buildJob(row: DraftRow): DownloadJob {
+  const digest = row.checksum.trim();
   return {
-    url,
+    url: row.url.trim(),
     dir: settings.dir,
-    output: single ? output.value.trim() : "",
-    checksum: digest ? `${checksumAlg.value}:${digest}` : "",
+    output: row.output.trim(),
+    checksum: digest ? `${row.alg}:${digest}` : "",
     threads: settings.threads,
     retry: settings.retry,
     timeout: settings.timeout,
@@ -68,6 +154,36 @@ function buildJob(url: string, single: boolean): DownloadJob {
   };
 }
 
+function addRow(): void {
+  rows.value.push(makeRow());
+}
+
+function removeRow(id: number): void {
+  if (rows.value.length === 1) {
+    rows.value = [makeRow()];
+    return;
+  }
+  rows.value = rows.value.filter((row) => row.id !== id);
+}
+
+function splitLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+/** 在链接输入框里粘贴多行时，自动拆成多条任务行。 */
+function onRowPaste(event: Event, row: DraftRow): void {
+  const clipboard = (event as ClipboardEvent).clipboardData?.getData("text") ?? "";
+  const lines = splitLines(clipboard);
+  if (lines.length <= 1) return;
+  event.preventDefault();
+  row.url = lines[0];
+  const index = rows.value.findIndex((item) => item.id === row.id);
+  rows.value.splice(index + 1, 0, ...lines.slice(1).map((line) => makeRow(line)));
+}
+
 async function pasteFromClipboard(): Promise<void> {
   let text = "";
   try {
@@ -80,52 +196,59 @@ async function pasteFromClipboard(): Promise<void> {
       return;
     }
   }
-  if (!text.trim()) {
-    message.warning("剪贴板里没有文本");
+  const lines = splitLines(text);
+  if (lines.length === 0) {
+    message.warning("剪贴板里没有链接");
     return;
   }
-  urlText.value = urlText.value.trim() ? `${urlText.value.trim()}\n${text.trim()}` : text.trim();
+  const filled = rows.value.filter(
+    (row) => row.url.trim() || row.output.trim() || row.checksum.trim(),
+  );
+  const added = lines.map((line) => makeRow(line));
+  rows.value = filled.length === 0 ? added : [...rows.value, ...added];
 }
 
 async function startDownload(): Promise<void> {
-  const urls = parseUrls();
-  if (urls.length === 0) {
+  const drafts = rows.value.filter((row) => row.url.trim().length > 0);
+  if (drafts.length === 0) {
     message.warning("请先粘贴下载链接");
     return;
-  }
-  const invalid = urls.find((url) => !looksLikeUrl(url));
-  if (invalid) {
-    message.error(`链接必须以 http:// 或 https:// 开头：${invalid}`);
-    return;
-  }
-  if (urls.length > 1 && output.value.trim()) {
-    message.warning("批量下载时不能指定统一文件名，已忽略文件名");
   }
   if (!settings.dir.trim()) {
     message.warning("请先选择保存目录");
     return;
   }
 
+  for (const [index, row] of drafts.entries()) {
+    const label = `第 ${index + 1} 个链接`;
+    if (!looksLikeUrl(row.url.trim())) {
+      message.error(`${label}必须以 http:// 或 https:// 开头`);
+      return;
+    }
+    if (row.checksum.trim() && !row.alg) {
+      message.error(`${label}填了哈希值，请同时选择校验算法`);
+      return;
+    }
+  }
+
   busy.value = true;
   const failures: string[] = [];
   let started = 0;
-  for (const url of urls) {
+  for (const row of drafts) {
     try {
-      const result = await bsd.start(buildJob(url, urls.length === 1));
+      const result = await bsd.start(buildJob(row));
       addTask(result);
       started += 1;
     } catch (error) {
-      failures.push(`${url}\n${String(error)}`);
+      failures.push(`${row.url.trim()}\n${String(error)}`);
     }
   }
   busy.value = false;
 
   if (started > 0) {
-    urlText.value = "";
-    output.value = "";
-    checksumValue.value = "";
+    rows.value = [makeRow()];
     filter.value = "all";
-    message.success(urls.length === 1 ? "任务已开始下载" : `已开始 ${started} 个下载任务`);
+    message.success(started === 1 ? "任务已开始下载" : `已开始 ${started} 个下载任务`);
   }
   if (failures.length > 0) {
     notification.error({
@@ -226,12 +349,8 @@ function askClearFinished(): void {
   });
 }
 
-function onRateChange(value: string | number | null): void {
+function onRateChange(value: unknown): void {
   settings.limitRate = Number(value ?? 0);
-}
-
-function onAlgChange(value: string | number | null): void {
-  checksumAlg.value = String(value ?? "sha256");
 }
 
 function setThreads(value: number | null): void {
@@ -272,26 +391,63 @@ onMounted(async () => {
     <section class="card composer">
       <div class="composer-head">
         <span class="field-label">下载链接</span>
-        <button class="link-btn" type="button" @click="pasteFromClipboard">
-          <AppIcon name="paste" :size="13" />从剪贴板粘贴
-        </button>
-      </div>
-
-      <div class="url-row">
-        <NInput
-          v-model:value="urlText"
-          type="textarea"
-          class="url-input"
-          :autosize="{ minRows: 2, maxRows: 4 }"
-          :disabled="busy"
-          placeholder="每行一个链接，支持批量"
-        />
-        <div class="url-actions">
-          <button class="btn-primary" :disabled="busy || !coreReady" @click="startDownload">
-            <AppIcon :name="busy ? 'clock' : 'download'" :size="17" />
-            {{ busy ? "正在提交…" : "开始下载" }}
+        <div class="head-actions">
+          <button class="link-btn" type="button" @click="addRow">
+            <AppIcon name="plus" :size="13" />添加一行
+          </button>
+          <button class="link-btn" type="button" :disabled="busy" @click="openImport('curl')">
+            <AppIcon name="copy" :size="13" />导入 cURL
+          </button>
+          <button class="link-btn" type="button" :disabled="busy" @click="openImport('cookie')">
+            <AppIcon name="shield" :size="13" />导入 Cookie
+          </button>
+          <button class="link-btn" type="button" @click="pasteFromClipboard">
+            <AppIcon name="paste" :size="13" />从剪贴板粘贴
           </button>
         </div>
+      </div>
+
+      <div class="rows">
+        <div v-for="r in rows" :key="r.id" class="row-grid">
+          <NInput
+            v-model:value="r.url"
+            class="f-url"
+            :disabled="busy"
+            :placeholder="urlPlaceholder"
+            @paste="onRowPaste($event, r)"
+          />
+          <div class="row-meta">
+            <NInput
+              v-model:value="r.output"
+              class="f-name"
+              :disabled="busy"
+              placeholder="文件名（可选）"
+            />
+            <NSelect
+              v-model:value="r.alg"
+              class="f-alg"
+              :options="algOptions"
+              :disabled="busy"
+            />
+            <NInput
+              v-model:value="r.checksum"
+              class="f-hash"
+              :disabled="busy || !r.alg"
+              placeholder="哈希值（可选）"
+            />
+          </div>
+          <button class="icon-btn row-remove" title="移除这一行" type="button" @click="removeRow(r.id)">
+            <AppIcon name="trash" :size="15" />
+          </button>
+        </div>
+      </div>
+
+      <div class="composer-foot">
+        <span class="hint">每行一个任务；文件名与哈希留空则自动处理</span>
+        <button class="btn-primary" :disabled="busy || !coreReady" @click="startDownload">
+          <AppIcon :name="busy ? 'clock' : 'download'" :size="17" />
+          {{ busy ? "正在提交…" : "开始下载" }}
+        </button>
       </div>
 
       <div class="quick-grid">
@@ -335,18 +491,6 @@ onMounted(async () => {
       </div>
 
       <div v-if="advancedOpen" class="advanced">
-        <div class="field">
-          <span class="field-label">文件名（可选）</span>
-          <NInput v-model:value="output" placeholder="留空自动识别" />
-        </div>
-        <div class="field">
-          <span class="field-label">校验算法</span>
-          <NSelect :value="checksumAlg" :options="algOptions" @update:value="onAlgChange" />
-        </div>
-        <div class="field">
-          <span class="field-label">校验值（可选）</span>
-          <NInput v-model:value="checksumValue" placeholder="十六进制哈希" />
-        </div>
         <div class="field">
           <span class="field-label">代理</span>
           <NInput v-model:value="settings.proxy" placeholder="http://127.0.0.1:7890" />
@@ -444,6 +588,34 @@ onMounted(async () => {
         </div>
       </div>
     </section>
+
+    <NModal
+      v-model:show="importOpen"
+      preset="card"
+      :title="importTitle"
+      :bordered="false"
+      :style="{ width: '620px', maxWidth: '94vw' }"
+    >
+      <p class="import-hint">{{ importHint }}</p>
+      <NInput
+        v-model:value="importText"
+        type="textarea"
+        :autosize="{ minRows: 8, maxRows: 14 }"
+        :placeholder="importMode === 'cookie' ? 'key=value; key2=value2' : '粘贴完整的 curl 命令'"
+      />
+      <div v-if="importSummary.length > 0" class="import-summary">
+        <span class="field-label">识别到</span>
+        <div class="import-tags">
+          <span v-for="item in importSummary" :key="item" class="import-tag">{{ item }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <div class="import-foot">
+          <button class="btn" type="button" @click="importOpen = false">取消</button>
+          <button class="btn-primary" type="button" @click="applyImport">填入</button>
+        </div>
+      </template>
+    </NModal>
   </div>
 </template>
 
@@ -459,10 +631,16 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 .composer-head .field-label {
   margin-bottom: 0;
+}
+
+.head-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .link-btn {
@@ -483,33 +661,58 @@ onMounted(async () => {
   background: var(--accent-soft);
 }
 
-.url-row {
+.rows {
   display: flex;
-  gap: 10px;
-  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.url-input {
-  flex: 1;
+.row-grid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-
-.url-actions {
+.f-url {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.row-meta {
   display: flex;
   flex: 0 0 auto;
-  align-items: stretch;
+  align-items: center;
+  gap: 8px;
 }
-.url-actions .btn-primary {
-  height: auto;
-  min-height: 46px;
-  min-width: 132px;
-  padding: 0 22px;
+.f-name {
+  width: 148px;
+}
+.f-alg {
+  width: 108px;
+}
+.f-hash {
+  width: 178px;
+}
+.row-remove {
+  flex: 0 0 32px;
+}
+
+.composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+.composer-foot .hint {
+  min-width: 0;
 }
 
 .quick-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 100px 128px auto;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 .field {
@@ -643,6 +846,54 @@ onMounted(async () => {
   background: var(--success);
   box-shadow: 0 0 0 3px var(--success-soft);
   animation: chip-pulse 1.6s ease-in-out infinite;
+}
+
+.import-hint {
+  margin: 0 0 10px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.import-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.import-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.import-tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+  color: var(--accent-2);
+  font-size: 12px;
+}
+
+.import-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 1040px) {
+  .row-grid {
+    flex-wrap: wrap;
+  }
+  .row-meta {
+    flex: 1 1 100%;
+  }
+  .f-hash {
+    flex: 1 1 auto;
+    width: auto;
+  }
 }
 
 @media (max-width: 980px) {

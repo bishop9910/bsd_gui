@@ -178,6 +178,22 @@ fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
+/// 把核心返回的英文异常整理成界面能一眼看懂的中文说明。
+fn friendly_message(raw: Option<String>) -> Option<String> {
+    let raw = raw?;
+    let lower = raw.to_lowercase();
+    if lower.contains("rename failed: file already exists") {
+        return Some("目标文件已存在，请换一个文件名，或先删除同名文件".to_string());
+    }
+    if lower.contains("diff hash") {
+        return Some("哈希校验失败，下载的文件已删除".to_string());
+    }
+    if lower.contains("url mismatch") || lower.contains("cannot resume") {
+        return Some(format!("无法续传：{}", raw));
+    }
+    Some(raw)
+}
+
 fn next_task_id() -> String {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     format!("t{}-{}", now_ms(), COUNTER.fetch_add(1, Ordering::Relaxed))
@@ -426,6 +442,8 @@ fn run(
         message = Some("已取消".to_string());
     } else if ok {
         message = None;
+    } else {
+        message = friendly_message(message);
     }
 
     let payload = FinishedPayload {
